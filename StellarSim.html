@@ -1,0 +1,399 @@
+<html><head><base href="https://websim.ai%20interface%20%C3%A9ducative%20pour%20enfant%20de%2012%20ans"><title>WebSim: Explore l'Espace !</title>
+<style>
+  body {
+    font-family: 'Comic Sans MS', cursive, sans-serif;
+    background-color: #1a1a4a;
+    color: #ffffff;
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  #header {
+    background-color: #4CAF50;
+    padding: 10px;
+    text-align: center;
+  }
+  h1 {
+    color: #FFD700;
+    text-shadow: 2px 2px #000000;
+  }
+  #main-container {
+    display: flex;
+    flex: 1;
+  }
+  #simulation-container {
+    flex: 3;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  #side-menu {
+    flex: 1;
+    background-color: #2a2a6a;
+    padding: 20px;
+    overflow-y: auto;
+  }
+  canvas {
+    border: 3px solid #FFD700;
+    border-radius: 10px;
+    background-color: #000033;
+  }
+  #controls {
+    margin-top: 10px;
+  }
+  button {
+    background-color: #FF6B6B;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    margin: 5px;
+    border-radius: 20px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+  button:hover {
+    transform: scale(1.1);
+    background-color: #FF8E8E;
+  }
+  #info-panel {
+    margin-top: 10px;
+    padding: 10px;
+    background-color: #3a3a7a;
+    border-radius: 10px;
+    font-size: 18px;
+  }
+  #body-list {
+    list-style-type: none;
+    padding: 0;
+  }
+  #body-list li {
+    cursor: pointer;
+    padding: 10px;
+    margin: 5px 0;
+    background-color: #3a3a7a;
+    border-radius: 10px;
+    transition: all 0.3s;
+  }
+  #body-list li:hover {
+    background-color: #4a4a8a;
+    transform: scale(1.05);
+  }
+  #body-editor {
+    margin-top: 20px;
+  }
+  #body-editor input {
+    width: 100%;
+    margin-bottom: 10px;
+    padding: 10px;
+    border-radius: 10px;
+    border: 2px solid #4CAF50;
+    background-color: #1a1a4a;
+    color: #ffffff;
+    font-size: 16px;
+  }
+  .editor-section {
+    margin-bottom: 20px;
+    border: 2px solid #FFD700;
+    padding: 10px;
+    border-radius: 10px;
+  }
+  #fun-facts {
+    background-color: #4a4a8a;
+    padding: 10px;
+    border-radius: 10px;
+    margin-top: 20px;
+  }
+</style>
+</head>
+<body>
+<div id="header">
+  <h1>🚀 StellarSim: Explore l'Espace ! 🌟</h1>
+</div>
+<div id="main-container">
+  <div id="simulation-container">
+    <canvas id="solar-system-canvas" width="800" height="600"></canvas>
+    <div id="controls">
+      <button id="random-system">🎲 Nouveau Système</button>
+      <button id="reset-sun">🌞 Centrer le Soleil</button>
+      <button id="add-planet">🌍 Ajouter une Planète</button>
+      <button id="zoom-in">🔍 Zoom +</button>
+      <button id="zoom-out">🔎 Zoom -</button>
+    </div>
+    <div id="info-panel">
+      Clique sur une planète dans la liste à droite pour en savoir plus !
+    </div>
+  </div>
+
+  <div id="side-menu">
+    <h2>🌠 Planètes de ton Système</h2>
+    <ul id="body-list"></ul>
+
+    <div id="body-editor" style="display: none;">
+      <h3>✏️ Modifie ta Planète</h3>
+
+      <div class="editor-section">
+        <h4>🏷️ Nom de ta Planète</h4>
+        <input type="text" id="body-name" placeholder="Donne un nom cool !">
+      </div>
+
+      <div class="editor-section">
+        <h4>⚖️ Caractéristiques</h4>
+        <input type="number" id="body-mass" placeholder="Masse (en kg)">
+        <input type="number" id="body-radius" placeholder="Rayon (en m)">
+      </div>
+
+      <div class="editor-section">
+        <h4>🎨 Couleur</h4>
+        <input type="color" id="body-color">
+      </div>
+
+      <div id="editor-controls">
+        <button id="save-body">💾 Sauvegarder</button>
+        <button id="delete-body">🗑️ Supprimer</button>
+      </div>
+    </div>
+
+    <div id="fun-facts">
+      <h3>🤓 Le Sais-tu ?</h3>
+      <p id="fact"></p>
+    </div>
+  </div>
+</div>
+
+<script>
+  const canvas = document.getElementById('solar-system-canvas');
+  const ctx = canvas.getContext('2d');
+  const randomSystemBtn = document.getElementById('random-system');
+  const resetSunBtn = document.getElementById('reset-sun');
+  const addPlanetBtn = document.getElementById('add-planet');
+  const infoPanel = document.getElementById('info-panel');
+  const bodyEditor = document.getElementById('body-editor');
+  const bodyList = document.getElementById('body-list');
+  const saveBodyBtn = document.getElementById('save-body');
+  const deleteBodyBtn = document.getElementById('delete-body');
+  const zoomInBtn = document.getElementById('zoom-in');
+  const zoomOutBtn = document.getElementById('zoom-out');
+  const factDisplay = document.getElementById('fact');
+
+  const G = 6.67430e-11; // Constante gravitationnelle
+  const AU = 1.496e11; // Unité astronomique en mètres
+  let SCALE = canvas.width / (8 * AU); // Échelle de la simulation
+  const SUN_COLOR = '#FFD700';
+  const PLANET_COLORS = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#8A2BE2', '#FF8C00', '#32CD32', '#BA55D3', '#20B2AA', '#FF69B4', '#1E90FF'];
+
+  let bodies = [];
+  let selectedBody = null;
+
+  const funFacts = [
+    "La lumière du Soleil met environ 8 minutes pour atteindre la Terre !",
+    "Jupiter est si grande que toutes les autres planètes du système solaire pourraient tenir à l'intérieur !",
+    "Un jour sur Vénus est plus long qu'une année sur Vénus !",
+    "Saturne pourrait flotter dans une baignoire géante car sa densité est inférieure à celle de l'eau !",
+    "Il y a plus d'étoiles dans l'univers que de grains de sable sur toutes les plages de la Terre !",
+    "Sur Mars, le soleil apparaît environ deux fois plus petit que depuis la Terre !",
+    "La Grande Tache Rouge de Jupiter est une tempête qui dure depuis plus de 300 ans !",
+    "Uranus tourne sur le côté, comme une boule qui roule !",
+    "Neptune a les vents les plus rapides du système solaire, atteignant 2100 km/h !",
+    "Si la Terre avait la taille d'une balle de tennis, Jupiter serait aussi grande qu'un ballon de basket !"
+  ];
+
+  function createRandomSystem() {
+    bodies = [];
+
+    // Créer le soleil
+    bodies.push({
+      name: "Soleil",
+      mass: (Math.random() * 1.5 + 0.5) * 1.989e30,
+      radius: (Math.random() * 1.5 + 0.5) * 696340000,
+      x: 0,
+      y: 0,
+      vx: 0,
+      vy: 0,
+      color: SUN_COLOR
+    });
+
+    // Créer des planètes aléatoires
+    const planetCount = Math.floor(Math.random() * 5) + 3; // Entre 3 et 7 planètes
+    for (let i = 1; i <= planetCount; i++) {
+      const mass = (Math.random() * 2 + 0.1) * 5.97e24;
+      const radius = (Math.random() * 2 + 0.5) * 6371000;
+      const distance = (Math.random() * 3 + i * 0.4) * AU;
+
+      const speed = Math.sqrt((G * bodies[0].mass) / distance);
+      const angle = Math.random() * 2 * Math.PI;
+
+      bodies.push({
+        name: `Planète ${i}`,
+        mass: mass,
+        radius: radius,
+        x: distance * Math.cos(angle),
+        y: distance * Math.sin(angle),
+        vx: -speed * Math.sin(angle),
+        vy: speed * Math.cos(angle),
+        color: PLANET_COLORS[i - 1 % PLANET_COLORS.length]
+      });
+    }
+    updateBodyList();
+    displayRandomFact();
+  }
+
+  function animate() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    updatePositions();
+    drawBodies();
+    requestAnimationFrame(animate);
+  }
+
+  function updatePositions() {
+    const dt = 86400; // Pas de temps d'un jour
+
+    for (let i = 1; i < bodies.length; i++) {
+      for (let j = 0; j < i; j++) {
+        const dx = bodies[i].x - bodies[j].x;
+        const dy = bodies[i].y - bodies[j].y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        const force = G * bodies[i].mass * bodies[j].mass / (distance * distance);
+        const ax = force * dx / distance / bodies[i].mass;
+        const ay = force * dy / distance / bodies[i].mass;
+
+        bodies[i].vx -= ax * dt;
+        bodies[i].vy -= ay * dt;
+        bodies[j].vx += ax * dt * bodies[i].mass / bodies[j].mass;
+        bodies[j].vy += ay * dt * bodies[i].mass / bodies[j].mass;
+      }
+    }
+
+    for (let body of bodies) {
+      body.x += body.vx * dt;
+      body.y += body.vy * dt;
+    }
+  }
+
+  function drawBodies() {
+    for (let body of bodies) {
+      ctx.beginPath();
+      ctx.arc(
+        canvas.width / 2 + body.x * SCALE,
+        canvas.height / 2 + body.y * SCALE,
+        Math.max(3, body.radius * SCALE),
+        0,
+        2 * Math.PI
+      );
+      ctx.fillStyle = body.color;
+      ctx.fill();
+
+      // Afficher le nom de l'astre
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '14px Comic Sans MS';
+      ctx.fillText(body.name, canvas.width / 2 + body.x * SCALE, canvas.height / 2 + body.y * SCALE - body.radius * SCALE - 5);
+    }
+  }
+
+  function zoom(factor) {
+    SCALE *= factor;
+  }
+
+  function addPlanet() {
+    const distance = (bodies.length * 0.4) * AU;
+    const speed = Math.sqrt((G * bodies[0].mass) / distance);
+    const angle = Math.random() * 2 * Math.PI;
+
+    bodies.push({
+      name: `Nouvelle Planète ${bodies.length}`,
+      mass: 5.97e24, // Masse de la Terre
+      radius: 6371000, // Rayon de la Terre
+      x: distance * Math.cos(angle),
+      y: distance * Math.sin(angle),
+      vx: -speed * Math.sin(angle),
+      vy: speed * Math.cos(angle),
+      color: PLANET_COLORS[(bodies.length - 1) % PLANET_COLORS.length]
+    });
+    updateBodyList();
+  }
+
+  function updateBodyList() {
+    bodyList.innerHTML = '';
+    bodies.forEach((body, index) => {
+      const li = document.createElement('li');
+      li.textContent = body.name;
+      li.onclick = () => selectBody(index);
+      bodyList.appendChild(li);
+    });
+  }
+
+  function selectBody(index) {
+    selectedBody = bodies[index];
+    document.getElementById('body-name').value = selectedBody.name;
+    document.getElementById('body-mass').value = selectedBody.mass;
+    document.getElementById('body-radius').value = selectedBody.radius;
+    document.getElementById('body-color').value = selectedBody.color;
+    bodyEditor.style.display = 'block';
+  }
+
+  function saveBodyChanges() {
+    if (selectedBody) {
+      selectedBody.name = document.getElementById('body-name').value;
+      selectedBody.mass = parseFloat(document.getElementById('body-mass').value);
+      selectedBody.radius = parseFloat(document.getElementById('body-radius').value);
+      selectedBody.color = document.getElementById('body-color').value;
+      updateBodyList();
+    }
+  }
+
+  function deleteSelectedBody() {
+    if (selectedBody && selectedBody !== bodies[0]) { // Empêche la suppression du soleil
+      const index = bodies.indexOf(selectedBody);
+      if (index > -1) {
+        bodies.splice(index, 1);
+        updateBodyList();
+        bodyEditor.style.display = 'none';
+      }
+    } else {
+      alert("On ne peut pas supprimer le Soleil ! Il est trop important !");
+    }
+  }
+
+  function displayRandomFact() {
+    const randomIndex = Math.floor(Math.random() * funFacts.length);
+    factDisplay.textContent = funFacts[randomIndex];
+  }
+
+  // Déplacer le soleil avec le clic gauche de la souris
+  canvas.addEventListener('mousedown', (e) => {
+    if (e.button === 0) { // Vérifie si c'est un clic gauche
+      const rect = canvas.getBoundingClientRect();
+      const x = (e.clientX - rect.left - canvas.width / 2) / SCALE;
+      const y = (e.clientY - rect.top - canvas.height / 2) / SCALE;
+      bodies[0].x = x;
+      bodies[0].y = y;
+      bodies[0].vx = 0;
+      bodies[0].vy = 0;
+    }
+  });
+
+  randomSystemBtn.addEventListener('click', () => {
+    createRandomSystem();
+    displayRandomFact();
+  });
+  resetSunBtn.addEventListener('click', () => {
+    bodies[0].x = 0;
+    bodies[0].y = 0;
+    bodies[0].vx = 0;
+    bodies[0].vy = 0;
+  });
+  addPlanetBtn.addEventListener('click', addPlanet);
+  saveBodyBtn.addEventListener('click', saveBodyChanges);
+  deleteBodyBtn.addEventListener('click', deleteSelectedBody);
+  zoomInBtn.addEventListener('click', () => zoom(1.1));
+  zoomOutBtn.addEventListener('click', () => zoom(0.9));
+
+  createRandomSystem();
+  animate();
+  displayRandomFact();
+</script>
+</body>

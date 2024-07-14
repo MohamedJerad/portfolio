@@ -1,0 +1,361 @@
+<html><head><base href="https://jeux-retro.ai/puissance-4-neuronal%20animations%20%C3%A0%20chaque%20action%20de%20chaque%20joueur%20s'inspirant%20de%20star%20wars"><title>Puissance 4 Neuronal: Galaxie Lointaine - Jeux Rétro AI</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+
+  body, html {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    font-family: 'Orbitron', sans-serif;
+    background: #000 url('space-background.jpg') no-repeat center center fixed;
+    background-size: cover;
+    color: #FFE81F;
+    overflow: hidden;
+  }
+
+  .galaxy-container {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    perspective: 1000px;
+  }
+
+  #game-board {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 5px;
+    background: rgba(0, 0, 255, 0.3);
+    padding: 10px;
+    border-radius: 10px;
+    box-shadow: 0 0 20px #4CAF50, 0 0 40px #4CAF50;
+  }
+
+  .cell {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .cell::before {
+    content: '';
+    position: absolute;
+    top: 5%;
+    left: 5%;
+    right: 5%;
+    bottom: 5%;
+    background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0.2));
+    border-radius: 50%;
+    opacity: 0.6;
+  }
+
+  .cell:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 15px #FFE81F;
+  }
+
+  .red { background-color: #FF4136; }
+  .yellow { background-color: #FFE81F; }
+
+  #status, #ai-status {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 1.2em;
+    text-align: center;
+    text-shadow: 0 0 10px #FFE81F;
+  }
+
+  #ai-status {
+    bottom: 50px;
+    font-size: 1em;
+    color: #4CAF50;
+  }
+
+  #reset-game {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255, 232, 31, 0.2);
+    color: #FFE81F;
+    border: 2px solid #FFE81F;
+    padding: 10px 20px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 1em;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  #reset-game:hover {
+    background: rgba(255, 232, 31, 0.4);
+    box-shadow: 0 0 20px #FFE81F;
+  }
+
+  .star {
+    position: absolute;
+    width: 2px;
+    height: 2px;
+    background: #fff;
+    border-radius: 50%;
+    animation: twinkle 1s infinite alternate;
+  }
+
+  @keyframes twinkle {
+    from { opacity: 0.2; }
+    to { opacity: 1; }
+  }
+
+  .lightsaber {
+    position: absolute;
+    width: 4px;
+    height: 0;
+    border-radius: 2px;
+    transition: height 0.5s ease;
+  }
+
+  .lightsaber.red { background-color: #FF4136; box-shadow: 0 0 10px #FF4136; }
+  .lightsaber.yellow { background-color: #FFE81F; box-shadow: 0 0 10px #FFE81F; }
+
+  @keyframes saber-swing {
+    0% { transform: rotate(0deg); }
+    50% { transform: rotate(20deg); }
+    100% { transform: rotate(0deg); }
+  }
+
+</style>
+</head>
+<body>
+  <div class="galaxy-container" id="galaxy">
+    <div id="game-board"></div>
+  </div>
+  <div id="status">Que la Force soit avec vous dans ce Puissance 4 Galactique</div>
+  <div id="ai-status">L'IA médite sur les voies de la Force...</div>
+  <button id="reset-game">Nouvelle Partie Galactique</button>
+
+<script>
+const galaxy = document.getElementById('galaxy');
+const gameBoard = document.getElementById('game-board');
+const statusDisplay = document.getElementById('status');
+const aiStatusDisplay = document.getElementById('ai-status');
+const resetButton = document.getElementById('reset-game');
+
+let board = Array(6).fill().map(() => Array(7).fill(0));
+let currentPlayer = 1;
+let gameOver = false;
+let aiLearning = 0;
+
+function createStars() {
+  for (let i = 0; i < 100; i++) {
+    const star = document.createElement('div');
+    star.classList.add('star');
+    star.style.left = `${Math.random() * 100}%`;
+    star.style.top = `${Math.random() * 100}%`;
+    star.style.animationDelay = `${Math.random() * 1}s`;
+    galaxy.appendChild(star);
+  }
+}
+
+function createBoard() {
+  gameBoard.innerHTML = '';
+  for (let row = 5; row >= 0; row--) {
+    for (let col = 0; col < 7; col++) {
+      const cell = document.createElement('div');
+      cell.classList.add('cell');
+      cell.dataset.col = col;
+      cell.addEventListener('click', () => makeMove(col));
+      gameBoard.appendChild(cell);
+    }
+  }
+}
+
+function makeMove(col) {
+  if (gameOver) return;
+  
+  const row = findAvailableRow(col);
+  if (row === -1) return;
+
+  board[row][col] = currentPlayer;
+  updateBoardUI();
+  animateLightsaber(col, currentPlayer);
+
+  if (checkWin(row, col)) {
+    statusDisplay.textContent = `Le côté ${currentPlayer === 1 ? 'Rouge' : 'Jaune'} de la Force l'emporte !`;
+    gameOver = true;
+    return;
+  }
+
+  if (board.every(row => row.every(cell => cell !== 0))) {
+    statusDisplay.textContent = "La Force est en équilibre. Match nul !";
+    gameOver = true;
+    return;
+  }
+
+  currentPlayer = 3 - currentPlayer;
+  statusDisplay.textContent = `C'est au tour du côté ${currentPlayer === 1 ? 'Rouge' : 'Jaune'} de la Force`;
+
+  if (currentPlayer === 2) {
+    setTimeout(aiMove, 1000);
+  }
+}
+
+function findAvailableRow(col) {
+  for (let row = 0; row < 6; row++) {
+    if (board[row][col] === 0) return row;
+  }
+  return -1;
+}
+
+function updateBoardUI() {
+  const cells = document.querySelectorAll('.cell');
+  cells.forEach((cell, index) => {
+    const row = 5 - Math.floor(index / 7);
+    const col = index % 7;
+    cell.classList.remove('red', 'yellow');
+    if (board[row][col] === 1) cell.classList.add('red');
+    if (board[row][col] === 2) cell.classList.add('yellow');
+  });
+}
+
+function animateLightsaber(col, player) {
+  const lightsaber = document.createElement('div');
+  lightsaber.classList.add('lightsaber', player === 1 ? 'red' : 'yellow');
+  lightsaber.style.left = `${(col / 7) * 100}%`;
+  lightsaber.style.bottom = '100%';
+  galaxy.appendChild(lightsaber);
+
+  setTimeout(() => {
+    lightsaber.style.height = '100px';
+    lightsaber.style.animation = 'saber-swing 0.5s ease';
+  }, 50);
+
+  setTimeout(() => {
+    galaxy.removeChild(lightsaber);
+  }, 1000);
+}
+
+function checkWin(row, col) {
+  const directions = [
+    [0, 1], [1, 0], [1, 1], [1, -1]
+  ];
+
+  return directions.some(([dx, dy]) => {
+    return [1, -1].some(direction => {
+      let count = 0;
+      let r = row;
+      let c = col;
+      while (r >= 0 && r < 6 && c >= 0 && c < 7 && board[r][c] === currentPlayer) {
+        count++;
+        r += dx * direction;
+        c += dy * direction;
+      }
+      return count >= 4;
+    });
+  });
+}
+
+function aiMove() {
+  aiLearning += 10;
+  aiStatusDisplay.textContent = `L'IA sonde ${aiLearning} futurs possibles...`;
+  
+  let bestScore = -Infinity;
+  let bestCol = 0;
+
+  for (let col = 0; col < 7; col++) {
+    const row = findAvailableRow(col);
+    if (row !== -1) {
+      board[row][col] = 2;
+      let score = minimax(board, 5, false);
+      board[row][col] = 0;
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestCol = col;
+      }
+    }
+  }
+
+  makeMove(bestCol);
+}
+
+function minimax(board, depth, isMaximizing) {
+  if (depth === 0) return evaluateBoard(board);
+
+  if (isMaximizing) {
+    let maxEval = -Infinity;
+    for (let col = 0; col < 7; col++) {
+      const row = findAvailableRow(col);
+      if (row !== -1) {
+        board[row][col] = 2;
+        let eval = minimax(board, depth - 1, false);
+        board[row][col] = 0;
+        maxEval = Math.max(maxEval, eval);
+      }
+    }
+    return maxEval;
+  } else {
+    let minEval = Infinity;
+    for (let col = 0; col < 7; col++) {
+      const row = findAvailableRow(col);
+      if (row !== -1) {
+        board[row][col] = 1;
+        let eval = minimax(board, depth - 1, true);
+        board[row][col] = 0;
+        minEval = Math.min(minEval, eval);
+      }
+    }
+    return minEval;
+  }
+}
+
+function evaluateBoard(board) {
+  let score = 0;
+  const directions = [[0, 1], [1, 0], [1, 1], [1, -1]];
+
+  for (let row = 0; row < 6; row++) {
+    for (let col = 0; col < 7; col++) {
+      if (board[row][col] !== 0) {
+        directions.forEach(([dx, dy]) => {
+          let count = 0;
+          let empty = 0;
+          for (let i = 0; i < 4; i++) {
+            const r = row + i * dx;
+            const c = col + i * dy;
+            if (r >= 0 && r < 6 && c >= 0 && c < 7) {
+              if (board[r][c] === board[row][col]) count++;
+              else if (board[r][c] === 0) empty++;
+            }
+          }
+          if (count === 4) score += board[row][col] === 2 ? 100 : -100;
+          else if (count === 3 && empty === 1) score += board[row][col] === 2 ? 5 : -5;
+          else if (count === 2 && empty === 2) score += board[row][col] === 2 ? 2 : -2;
+        });
+      }
+    }
+  }
+  return score;
+}
+
+resetButton.addEventListener('click', () => {
+  board = Array(6).fill().map(() => Array(7).fill(0));
+  gameOver = false;
+  currentPlayer = 1;
+  aiLearning = 0;
+  createBoard();
+  statusDisplay.textContent = "Que la Force soit avec vous dans cette nouvelle partie !";
+  aiStatusDisplay.textContent = "L'IA médite sur les voies de la Force...";
+});
+
+createStars();
+createBoard();
+</script>
+
+</body></html>

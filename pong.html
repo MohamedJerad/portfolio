@@ -1,0 +1,339 @@
+<html><head><base href="https://jeux-retro.ai/pong-dimensions%20interface%20ux%20pour%20choisir%20la%20vitesse%20de%20la%20balle,%20ses%20trajectoire,%20la%20difficult%C3%A9,%20la%20gravit%C3%A9%20ect..."><title>Pong Dimensions - Paramètres Avancés</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+
+  body, html {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    font-family: 'Orbitron', sans-serif;
+    background-color: #000;
+    color: #0ff;
+    overflow: hidden;
+  }
+
+  #game-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+  }
+
+  canvas {
+    border: 2px solid #0ff;
+    box-shadow: 0 0 10px #0ff, 0 0 20px #0ff, 0 0 30px #0ff;
+  }
+
+  #ui-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-around;
+    width: 100%;
+    max-width: 800px;
+    margin-top: 20px;
+  }
+
+  .control-group {
+    margin: 10px;
+    padding: 10px;
+    background-color: rgba(0, 255, 255, 0.1);
+    border-radius: 5px;
+  }
+
+  label {
+    display: block;
+    margin-bottom: 5px;
+  }
+
+  input[type="range"], select {
+    width: 100%;
+    margin-bottom: 10px;
+  }
+
+  button {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 16px;
+    padding: 10px 20px;
+    background-color: #0ff;
+    color: #000;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+
+  button:hover {
+    background-color: #fff;
+    box-shadow: 0 0 10px #fff, 0 0 20px #fff;
+  }
+
+  #start-button {
+    font-size: 20px;
+    margin-top: 20px;
+  }
+
+  .dimension-shift {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle, rgba(0,255,255,0.2) 0%, rgba(0,0,0,0) 70%);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.5s ease;
+  }
+
+  #score, #dimension-info {
+    font-size: 18px;
+    margin-top: 10px;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+<div id="game-container">
+  <canvas id="pongCanvas" width="800" height="400"></canvas>
+  <div id="score">Joueur: 0 | IA: 0</div>
+  <div id="dimension-info">Dimension actuelle: Classique</div>
+  <div id="ui-container">
+    <div class="control-group">
+      <label for="ball-speed">Vitesse de la balle:</label>
+      <input type="range" id="ball-speed" min="1" max="10" value="5">
+      <label for="trajectory">Trajectoire:</label>
+      <select id="trajectory">
+        <option value="linear">Linéaire</option>
+        <option value="random">Aléatoire</option>
+        <option value="curved">Courbée</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <label for="difficulty">Difficulté IA:</label>
+      <input type="range" id="difficulty" min="1" max="10" value="5">
+      <label for="gravity">Gravité:</label>
+      <input type="range" id="gravity" min="0" max="10" value="0">
+    </div>
+    <div class="control-group">
+      <label for="paddle-size">Taille des raquettes:</label>
+      <input type="range" id="paddle-size" min="20" max="200" value="100">
+      <label for="dimension-change">Changement de dimension:</label>
+      <select id="dimension-change">
+        <option value="manual">Manuel</option>
+        <option value="auto">Automatique</option>
+      </select>
+    </div>
+  </div>
+  <button id="start-button">Commencer le jeu</button>
+</div>
+<div class="dimension-shift"></div>
+
+<script>
+const canvas = document.getElementById('pongCanvas');
+const ctx = canvas.getContext('2d');
+const scoreElement = document.getElementById('score');
+const dimensionInfo = document.getElementById('dimension-info');
+const startButton = document.getElementById('start-button');
+const dimensionShift = document.querySelector('.dimension-shift');
+
+// UI Elements
+const ballSpeedInput = document.getElementById('ball-speed');
+const trajectorySelect = document.getElementById('trajectory');
+const difficultyInput = document.getElementById('difficulty');
+const gravityInput = document.getElementById('gravity');
+const paddleSizeInput = document.getElementById('paddle-size');
+const dimensionChangeSelect = document.getElementById('dimension-change');
+
+let playerScore = 0;
+let aiScore = 0;
+let gameLoop;
+let currentDimension = 'Classique';
+let dimensions = ['Classique', 'Inversée', 'Quantique', 'Gravitationnelle', 'Temporelle', 'Chaotique'];
+
+const ball = {
+  x: canvas.width / 2,
+  y: canvas.height / 2,
+  radius: 10,
+  speed: 5,
+  dx: 5,
+  dy: 5,
+  color: '#0ff'
+};
+
+const paddle = {
+  width: 10,
+  height: 100,
+  color: '#0ff'
+};
+
+const player = {
+  x: 0,
+  y: canvas.height / 2 - paddle.height / 2,
+  score: 0
+};
+
+const ai = {
+  x: canvas.width - paddle.width,
+  y: canvas.height / 2 - paddle.height / 2,
+  score: 0
+};
+
+function updateGameSettings() {
+  ball.speed = parseInt(ballSpeedInput.value);
+  paddle.height = parseInt(paddleSizeInput.value);
+  player.y = canvas.height / 2 - paddle.height / 2;
+  ai.y = canvas.height / 2 - paddle.height / 2;
+}
+
+function drawBall() {
+  ctx.beginPath();
+  ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+  ctx.fillStyle = ball.color;
+  ctx.fill();
+  ctx.closePath();
+}
+
+function drawPaddle(x, y) {
+  ctx.fillStyle = paddle.color;
+  ctx.fillRect(x, y, paddle.width, paddle.height);
+}
+
+function drawScore() {
+  ctx.font = '24px Orbitron';
+  ctx.fillStyle = '#0ff';
+  ctx.fillText(`${player.score}`, canvas.width / 4, 30);
+  ctx.fillText(`${ai.score}`, 3 * canvas.width / 4, 30);
+}
+
+function movePaddles() {
+  canvas.addEventListener('mousemove', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    player.y = e.clientY - rect.top - paddle.height / 2;
+  });
+
+  const aiDifficulty = parseInt(difficultyInput.value) / 10;
+  const prediction = ai.y + paddle.height / 2 + (ball.y - (ai.y + paddle.height / 2)) * aiDifficulty;
+  ai.y += (prediction - (ai.y + paddle.height / 2)) * 0.1;
+}
+
+function collisionDetection() {
+  if (ball.y + ball.dy > canvas.height - ball.radius || ball.y + ball.dy < ball.radius) {
+    ball.dy = -ball.dy;
+  }
+
+  if (
+    (ball.x - ball.radius < player.x + paddle.width && ball.y > player.y && ball.y < player.y + paddle.height) ||
+    (ball.x + ball.radius > ai.x && ball.y > ai.y && ball.y < ai.y + paddle.height)
+  ) {
+    ball.dx = -ball.dx;
+    applyTrajectory();
+  }
+
+  if (ball.x - ball.radius < 0) {
+    ai.score++;
+    resetBall();
+  } else if (ball.x + ball.radius > canvas.width) {
+    player.score++;
+    resetBall();
+  }
+}
+
+function resetBall() {
+  ball.x = canvas.width / 2;
+  ball.y = canvas.height / 2;
+  ball.dx = (Math.random() > 0.5 ? 1 : -1) * ball.speed;
+  ball.dy = (Math.random() > 0.5 ? 1 : -1) * ball.speed;
+  updateScore();
+  if (dimensionChangeSelect.value === 'auto') {
+    changeDimension();
+  }
+}
+
+function updateScore() {
+  scoreElement.textContent = `Joueur: ${player.score} | IA: ${ai.score}`;
+}
+
+function changeDimension() {
+  const newDimension = dimensions[Math.floor(Math.random() * dimensions.length)];
+  currentDimension = newDimension;
+  dimensionInfo.textContent = `Dimension actuelle: ${currentDimension}`;
+  applyDimensionEffects();
+  
+  dimensionShift.style.opacity = '1';
+  setTimeout(() => {
+    dimensionShift.style.opacity = '0';
+  }, 500);
+}
+
+function applyDimensionEffects() {
+  switch(currentDimension) {
+    case 'Inversée':
+      ball.dy = -ball.dy;
+      break;
+    case 'Quantique':
+      ball.radius = Math.random() * 15 + 5;
+      break;
+    case 'Gravitationnelle':
+      // La gravité est maintenant contrôlée par l'input utilisateur
+      break;
+    case 'Temporelle':
+      ball.speed = Math.random() * 8 + 2;
+      break;
+    case 'Chaotique':
+      applyTrajectory();
+      break;
+    default:
+      ball.speed = parseInt(ballSpeedInput.value);
+      ball.radius = 10;
+  }
+}
+
+function applyTrajectory() {
+  switch(trajectorySelect.value) {
+    case 'random':
+      const angle = Math.random() * Math.PI / 2 - Math.PI / 4;
+      ball.dx = Math.cos(angle) * ball.speed * (ball.dx > 0 ? 1 : -1);
+      ball.dy = Math.sin(angle) * ball.speed;
+      break;
+    case 'curved':
+      ball.dy += (Math.random() - 0.5) * 2;
+      break;
+    // 'linear' ne nécessite pas de changement
+  }
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  
+  drawBall();
+  drawPaddle(player.x, player.y);
+  drawPaddle(ai.x, ai.y);
+  drawScore();
+  
+  movePaddles();
+  collisionDetection();
+  
+  // Appliquer la gravité
+  ball.dy += parseFloat(gravityInput.value) / 100;
+  
+  ball.x += ball.dx;
+  ball.y += ball.dy;
+  
+  requestAnimationFrame(draw);
+}
+
+startButton.addEventListener('click', () => {
+  startButton.style.display = 'none';
+  updateGameSettings();
+  resetBall();
+  gameLoop = requestAnimationFrame(draw);
+});
+
+// Event listeners pour les changements de paramètres
+ballSpeedInput.addEventListener('change', updateGameSettings);
+paddleSizeInput.addEventListener('change', updateGameSettings);
+gravityInput.addEventListener('change', updateGameSettings);
+difficultyInput.addEventListener('change', updateGameSettings);
+
+updateScore();
+</script>
+</body></html>

@@ -1,0 +1,419 @@
+<html><head><base href="https://supersim.ai/imageedit" /><title>SuperImageEdit - Éditeur d'images avancé</title>
+<style>
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  margin: 0;
+  padding: 20px;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.container {
+  background-color: rgba(255, 255, 255, 0.9);
+  border-radius: 15px;
+  padding: 30px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  max-width: 1000px;
+  width: 100%;
+}
+h1 {
+  color: #4a4a4a;
+  text-align: center;
+  margin-bottom: 30px;
+  font-size: 2.5em;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+}
+#imageUpload {
+  display: none;
+}
+.upload-btn {
+  display: block;
+  width: 250px;
+  height: 60px;
+  margin: 20px auto;
+  background: linear-gradient(45deg, #ff9a9e 0%, #fad0c4 99%, #fad0c4 100%);
+  color: white;
+  text-align: center;
+  line-height: 60px;
+  cursor: pointer;
+  border-radius: 30px;
+  font-size: 1.2em;
+  transition: all 0.3s ease;
+}
+.upload-btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+#imagePreview {
+  max-width: 100%;
+  max-height: 500px;
+  margin: 20px auto;
+  display: block;
+  border-radius: 10px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 15px;
+  margin-top: 30px;
+}
+.control-btn {
+  padding: 12px 25px;
+  background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 25px;
+  cursor: pointer;
+  font-size: 1em;
+  transition: all 0.3s ease;
+}
+.control-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+.slider-container {
+  width: 100%;
+  margin: 20px 0;
+}
+.slider {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 15px;
+  border-radius: 5px;
+  background: #d3d3d3;
+  outline: none;
+  opacity: 0.7;
+  transition: opacity .2s;
+}
+.slider:hover {
+  opacity: 1;
+}
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  background: #4CAF50;
+  cursor: pointer;
+}
+.slider::-moz-range-thumb {
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  background: #4CAF50;
+  cursor: pointer;
+}
+#downloadBtn {
+  display: block;
+  width: 250px;
+  margin: 30px auto;
+  padding: 15px;
+  background: linear-gradient(45deg, #ff6b6b 0%, #feca57 100%);
+  color: white;
+  text-align: center;
+  text-decoration: none;
+  border-radius: 30px;
+  font-size: 1.2em;
+  transition: all 0.3s ease;
+}
+#downloadBtn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>SuperImageEdit - Éditeur d'images avancé</h1>
+  
+  <label for="imageUpload" class="upload-btn">Charger une image</label>
+  <input type="file" id="imageUpload" accept="image/*">
+  
+  <canvas id="imagePreview"></canvas>
+  
+  <div class="slider-container">
+    <input type="range" min="0" max="200" value="100" class="slider" id="brightnessSlider">
+    <label for="brightnessSlider">Luminosité</label>
+  </div>
+  
+  <div class="slider-container">
+    <input type="range" min="0" max="200" value="100" class="slider" id="contrastSlider">
+    <label for="contrastSlider">Contraste</label>
+  </div>
+  
+  <div class="slider-container">
+    <input type="range" min="0" max="360" value="0" class="slider" id="hueSlider">
+    <label for="hueSlider">Teinte</label>
+  </div>
+  
+  <div class="slider-container">
+    <input type="range" min="0" max="200" value="100" class="slider" id="saturationSlider">
+    <label for="saturationSlider">Saturation</label>
+  </div>
+  
+  <div class="controls">
+    <button class="control-btn" id="rotateBtn">Rotation</button>
+    <button class="control-btn" id="flipHBtn">Retourner H</button>
+    <button class="control-btn" id="flipVBtn">Retourner V</button>
+    <button class="control-btn" id="invertBtn">Inverser</button>
+    <button class="control-btn" id="sepiaBtn">Sépia</button>
+    <button class="control-btn" id="blurBtn">Flou</button>
+    <button class="control-btn" id="sharpenBtn">Netteté</button>
+    <button class="control-btn" id="embossBtn">Relief</button>
+    <button class="control-btn" id="vintageBtn">Vintage</button>
+    <button class="control-btn" id="resetBtn">Réinitialiser</button>
+  </div>
+  
+  <a id="downloadBtn" href="#" download="edited_image.png">Télécharger l'image</a>
+</div>
+
+<script>
+const imageUpload = document.getElementById('imageUpload');
+const imagePreview = document.getElementById('imagePreview');
+const brightnessSlider = document.getElementById('brightnessSlider');
+const contrastSlider = document.getElementById('contrastSlider');
+const hueSlider = document.getElementById('hueSlider');
+const saturationSlider = document.getElementById('saturationSlider');
+const rotateBtn = document.getElementById('rotateBtn');
+const flipHBtn = document.getElementById('flipHBtn');
+const flipVBtn = document.getElementById('flipVBtn');
+const invertBtn = document.getElementById('invertBtn');
+const sepiaBtn = document.getElementById('sepiaBtn');
+const blurBtn = document.getElementById('blurBtn');
+const sharpenBtn = document.getElementById('sharpenBtn');
+const embossBtn = document.getElementById('embossBtn');
+const vintageBtn = document.getElementById('vintageBtn');
+const resetBtn = document.getElementById('resetBtn');
+const downloadBtn = document.getElementById('downloadBtn');
+
+let ctx = imagePreview.getContext('2d');
+let img = new Image();
+let rotation = 0;
+let flipH = 1;
+let flipV = 1;
+let filters = {
+  brightness: 100,
+  contrast: 100,
+  hue: 0,
+  saturation: 100,
+  invert: 0,
+  sepia: 0,
+  blur: 0,
+  sharpen: 0,
+  emboss: 0,
+  vintage: 0
+};
+
+imageUpload.addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (file) {
+    const reader = new FileReader();
+    
+    reader.onload = function(event) {
+      img = new Image();
+      img.onload = function() {
+        // Adjust canvas size to fit the image
+        imagePreview.width = img.width;
+        imagePreview.height = img.height;
+        applyFilters();
+      }
+      img.src = event.target.result;
+    }
+    
+    reader.readAsDataURL(file);
+  }
+});
+
+brightnessSlider.addEventListener('input', function() {
+  filters.brightness = this.value;
+  applyFilters();
+});
+
+contrastSlider.addEventListener('input', function() {
+  filters.contrast = this.value;
+  applyFilters();
+});
+
+hueSlider.addEventListener('input', function() {
+  filters.hue = this.value;
+  applyFilters();
+});
+
+saturationSlider.addEventListener('input', function() {
+  filters.saturation = this.value;
+  applyFilters();
+});
+
+rotateBtn.addEventListener('click', function() {
+  rotation += 90;
+  if (rotation >= 360) rotation = 0;
+  applyFilters();
+});
+
+flipHBtn.addEventListener('click', function() {
+  flipH *= -1;
+  applyFilters();
+});
+
+flipVBtn.addEventListener('click', function() {
+  flipV *= -1;
+  applyFilters();
+});
+
+invertBtn.addEventListener('click', function() {
+  filters.invert = filters.invert ? 0 : 100;
+  applyFilters();
+});
+
+sepiaBtn.addEventListener('click', function() {
+  filters.sepia = filters.sepia ? 0 : 100;
+  applyFilters();
+});
+
+blurBtn.addEventListener('click', function() {
+  filters.blur = filters.blur ? 0 : 5;
+  applyFilters();
+});
+
+sharpenBtn.addEventListener('click', function() {
+  filters.sharpen = filters.sharpen ? 0 : 100;
+  applyFilters();
+});
+
+embossBtn.addEventListener('click', function() {
+  filters.emboss = filters.emboss ? 0 : 100;
+  applyFilters();
+});
+
+vintageBtn.addEventListener('click', function() {
+  filters.vintage = filters.vintage ? 0 : 100;
+  applyFilters();
+});
+
+resetBtn.addEventListener('click', function() {
+  rotation = 0;
+  flipH = 1;
+  flipV = 1;
+  filters = {
+    brightness: 100,
+    contrast: 100,
+    hue: 0,
+    saturation: 100,
+    invert: 0,
+    sepia: 0,
+    blur: 0,
+    sharpen: 0,
+    emboss: 0,
+    vintage: 0
+  };
+  brightnessSlider.value = 100;
+  contrastSlider.value = 100;
+  hueSlider.value = 0;
+  saturationSlider.value = 100;
+  applyFilters();
+});
+
+function applyFilters() {
+  if (!img.src) {
+    console.log("No image loaded");
+    return;
+  }
+
+  ctx.filter = `
+    brightness(${filters.brightness}%)
+    contrast(${filters.contrast}%)
+    hue-rotate(${filters.hue}deg)
+    saturate(${filters.saturation}%)
+    invert(${filters.invert}%)
+    sepia(${filters.sepia}%)
+    blur(${filters.blur}px)
+  `;
+  ctx.clearRect(0, 0, imagePreview.width, imagePreview.height);
+  
+  ctx.save();
+  ctx.translate(imagePreview.width/2, imagePreview.height/2);
+  ctx.rotate(rotation * Math.PI / 180);
+  ctx.scale(flipH, flipV);
+  ctx.drawImage(img, -img.width/2, -img.height/2);
+  ctx.restore();
+  
+  if (filters.sharpen) {
+    sharpenImage();
+  }
+  
+  if (filters.emboss) {
+    embossImage();
+  }
+  
+  if (filters.vintage) {
+    vintageEffect();
+  }
+  
+  updateDownloadLink();
+}
+
+function sharpenImage() {
+  let imageData = ctx.getImageData(0, 0, imagePreview.width, imagePreview.height);
+  let data = imageData.data;
+  let factor = 5;
+  let bias = 0;
+
+  for (let i = 0; i < data.length; i += 4) {
+    data[i] = factor * data[i] - (
+      data[i - 4] + data[i + 4] +
+      data[i - imagePreview.width * 4] + data[i + imagePreview.width * 4]
+    ) + bias;
+    data[i + 1] = factor * data[i + 1] - (
+      data[i - 3] + data[i + 5] +
+      data[i - imagePreview.width * 4 + 1] + data[i + imagePreview.width * 4 + 1]
+    ) + bias;
+    data[i + 2] = factor * data[i + 2] - (
+      data[i - 2] + data[i + 6] +
+      data[i - imagePreview.width * 4 + 2] + data[i + imagePreview.width * 4 + 2]
+    ) + bias;
+  }
+
+  ctx.putImageData(imageData, 0, 0);
+}
+
+function embossImage() {
+  let imageData = ctx.getImageData(0, 0, imagePreview.width, imagePreview.height);
+  let data = imageData.data;
+  for (let i = 0; i < data.length; i += 4) {
+    if (i % (imagePreview.width * 4) == 0) {
+      continue;
+    }
+    data[i] = 255 - data[i - 4];
+    data[i + 1] = 255 - data[i - 3];
+    data[i + 2] = 255 - data[i - 2];
+  }
+  ctx.putImageData(imageData, 0, 0);
+}
+
+function vintageEffect() {
+  let imageData = ctx.getImageData(0, 0, imagePreview.width, imagePreview.height);
+  let data = imageData.data;
+  for (let i = 0; i < data.length; i += 4) {
+    let r = data[i];
+    let g = data[i + 1];
+    let b = data[i + 2];
+    data[i] = (r * 0.393) + (g * 0.769) + (b * 0.189);
+    data[i + 1] = (r * 0.349) + (g * 0.686) + (b * 0.168);
+    data[i + 2] = (r * 0.272) + (g * 0.534) + (b * 0.131);
+  }
+  ctx.putImageData(imageData, 0, 0);
+}
+
+function updateDownloadLink() {
+  downloadBtn.href = imagePreview.toDataURL('image/png');
+}
+
+// Initial call to set up the canvas
+applyFilters();
+</script>
+</body></html>
